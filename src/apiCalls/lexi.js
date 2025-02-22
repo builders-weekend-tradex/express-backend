@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 
-export const getLexiChat = async(ticketSymbol) => {
+export const getLexiChat = async(tickerSymbol) => {
 const client = new OpenAI({
     baseURL: "https://venalisono.ap.xpressai.cloud/api/financials/",
     apiKey: "552d9c79-8de5-4d19-aae9-492469097221"
