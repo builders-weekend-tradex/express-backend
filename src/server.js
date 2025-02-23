@@ -16,9 +16,6 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 8080;
 
-// Array of client names for stock analysis
-const stockAnalysisChoicesClientNames = ["JayLacoma/Stock_Market_Analysis"];
-
 app.post("/lexi", async (req, res) => {
   const { tickerSymbol } = req.body;
 
@@ -31,7 +28,6 @@ app.post("/lexi", async (req, res) => {
     const messageToStream = removingBrackets(
       responseFromLexi.choices[0].message.content
     );
-
     res.status(200).json(messageToStream);
   } catch (error) {
     console.error("Error calling getLexiChat:", error);
@@ -47,21 +43,14 @@ app.post("/stockAnalysis", async (req, res) => {
   }
 
   try {
-    const stockAnalysisResponse = await Promise.all(
-      stockAnalysisChoicesClientNames.map(async (clientName) => {
-        try {
-          return await getStockAnalysis(clientName, tickerSymbol);
-        } catch (error) {
-          console.error(`Error fetching from ${clientName}:`, error);
-          return { clientName, error: "Failed to fetch data" };
-        }
-      })
+    const stockAnalysisResponse = await getStockAnalysis(
+      "JayLacoma/Stock_Market_Analysis",
+      tickerSymbol
     );
-
-    res.status(200).json(stockAnalysisResponse);
+    return res.status(200).json(stockAnalysisResponse);
   } catch (error) {
     console.error("Error in stock analysis route:", error);
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 
