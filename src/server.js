@@ -7,15 +7,7 @@ import { getLexiChat } from "./apiCalls/lexi.js";
 import { getStockAnalysis } from "./apiCalls/getStockAnalysis.js";
 
 // Mailing imports
-import multer from "multer";
 import nodemailer from "nodemailer";
-
-// Mailing utilities
-const upload = multer();
-
-// PDF helpers
-import path from "path";
-import { fileURLToPath } from "url";
 
 // Import utility functions
 import { removingBrackets } from "./utils/removingBrackets.js";
@@ -27,8 +19,6 @@ app.use(cors());
 app.use(express.json());
 
 const PORT = process.env.PORT || 8080;
-
-const __filename = fileURLToPath(import.meta.url);
 
 app.post("/lexi", async (req, res) => {
   const { tickerSymbol } = req.body;
