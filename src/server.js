@@ -14,8 +14,6 @@ import nodemailer from "nodemailer";
 const upload = multer();
 
 // PDF helpers
-import PDFDocument from "pdfkit";
-import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -31,7 +29,6 @@ app.use(express.json());
 const PORT = process.env.PORT || 8080;
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 app.post("/lexi", async (req, res) => {
   const { tickerSymbol } = req.body;
