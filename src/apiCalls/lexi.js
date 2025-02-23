@@ -11,7 +11,7 @@ export const getLexiChat = async (tickerSymbol) => {
     messages: [
       {
         role: "user",
-        content: `summarize this file/data/home/${tickerSymbol}.pdf`,
+        content: `summarize this file /data/home/${tickerSymbol}.pdf`,
       },
     ],
   });
