@@ -3,7 +3,7 @@ import OpenAI from "openai";
 export const getLexiChat = async (tickerSymbol) => {
   const client = new OpenAI({
     baseURL: "https://venalisono.ap.xpressai.cloud/api/fin/",
-    apiKey: "aca4be81-f10a-4349-bca3-527270472755",
+    apiKey: "7acaa0cf-43f3-4480-a67b-655244ee1915",
   });
 
   const response = await client.chat.completions.create({
