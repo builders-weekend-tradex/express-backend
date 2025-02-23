@@ -21,7 +21,7 @@ import { fileURLToPath } from "url";
 
 // Import utility functions
 import { removingBrackets } from "./utils/removingBrackets.js";
-import { createPDF } from "./utils/createPdf.js";
+import { createPDF, createPDFFromString } from "./utils/createPdf.js";
 
 const app = express();
 
@@ -72,7 +72,7 @@ app.post("/stockAnalysis", async (req, res) => {
 });
 
 app.post("/email", async (req, res) => {
-  const { tickerSymbol, email } = req.body;
+  const { tickerSymbol, email, result } = req.body;
 
   try {
     if (!tickerSymbol) {
@@ -80,6 +80,7 @@ app.post("/email", async (req, res) => {
     }
 
     const dataAnalysisPdf = await createPDF(tickerSymbol);
+    const lexiData = await createPDFFromString(result);
 
     const transporter = nodemailer.createTransport({
       service: "gmail",
@@ -101,10 +102,15 @@ app.post("/email", async (req, res) => {
           content: dataAnalysisPdf,
           contentType: "application/pdf",
         },
+        {
+          filename: `${tickerSymbol}-lexi-analysis.pdf`,
+          content: lexiData,
+          contentType: "application/pdf",
+        },
       ],
     };
 
-    await transporter.sendMail(mailOptions);
+    transporter.sendMail(mailOptions);
     res.status(200).send("Email sent successfully.");
   } catch (error) {
     console.error("Error occurred:", error);
