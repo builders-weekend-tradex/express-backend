@@ -3,6 +3,10 @@ import express from "express";
 import cors from "cors";
 
 import PDFDocument from "pdfkit";
+import puppeteer from "puppeteer";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 
 // Import external API call functions
 import { getLexiChat } from "./apiCalls/lexi.js";
@@ -24,6 +28,9 @@ app.use(cors());
 app.use(express.json());
 
 const PORT = process.env.PORT || 8080;
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 app.post("/lexi", async (req, res) => {
   const { tickerSymbol } = req.body;
@@ -64,53 +71,56 @@ app.post("/stockAnalysis", async (req, res) => {
 });
 
 app.post("/generate-pdf", async (req, res) => {
-  const { result, chartResults } = req.body;
+  const { result, chartResults, tickerSymbol } = req.body;
 
-  if (!result && (!chartResults || !chartResults.data)) {
-    return res.status(400).json({ error: "No data provided" });
+  const url = iframeUrls[tickerSymbol];
+  if (!url) {
+    console.error("Invalid ticker symbol received:", tickerSymbol);
+    return res.status(400).send("Invalid ticker symbol");
   }
 
   try {
-    // Create a PDF document
-    const doc = new PDFDocument();
-    let pdfBuffer = [];
+    console.log(`Generating PDF for ${tickerSymbol}...`);
 
-    doc.on("data", (chunk) => pdfBuffer.push(chunk));
-    doc.on("end", () => {
-      res.set({
-        "Content-Type": "application/pdf",
-        "Content-Disposition": 'attachment; filename="stock_analysis.pdf"',
-      });
-      res.send(Buffer.concat(pdfBuffer));
+    // Create a PDF document
+    const doc = new PDFDocument({ autoFirstPage: false });
+    const filePath = path.join(__dirname, `stock_analysis_${tickerSymbol}.pdf`);
+
+    // Pipe the document to a file
+    const fileStream = fs.createWriteStream(filePath);
+    doc.pipe(fileStream);
+
+    // Add a page to the PDF for the textual result
+    doc.addPage();
+    doc.fontSize(12).text(result || "No textual analysis available.", {
+      align: "left",
+      width: 500,
+      lineGap: 10,
     });
 
-    doc.fontSize(20).text("Report", { align: "center" });
-    doc.moveDown();
-
-    // Add Financial Analysis
-    doc.fontSize(16).text("AI Financial Analysis", { underline: true });
-    doc.moveDown();
-    doc.fontSize(14).text(result || "No analysis available.");
-    doc.moveDown(2);
-
-    // Add Stock Chart Analysis Data
-    if (chartResults && chartResults.data) {
-      doc.fontSize(16).text("Stock Chart Analysis", { underline: true });
-      doc.moveDown();
-
-      chartResults.data.forEach((chart, index) => {
-        doc
-          .fontSize(14)
-          .text(`Chart ${index + 1}: ${chart.title || "Stock Data"}`);
-        doc.fontSize(12).text(`Data: ${JSON.stringify(chart.plot, null, 2)}`);
-        doc.moveDown();
-      });
-    }
-
     doc.end();
+
+    // Wait until the PDF is fully created, then send it to the client
+    fileStream.on("finish", () => {
+      console.log("PDF generated successfully. Sending it to the client.");
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename=stock_analysis_${tickerSymbol}.pdf`
+      );
+      res.sendFile(filePath, (err) => {
+        if (err) {
+          console.error("Error sending PDF file:", err);
+          res.status(500).send("Failed to send PDF");
+        } else {
+          fs.unlinkSync(screenshotPath);
+          fs.unlinkSync(filePath);
+        }
+      });
+    });
   } catch (error) {
     console.error("Error generating PDF:", error);
-    res.status(500).json({ error: "Failed to generate PDF" });
+    res.status(500).send("Failed to generate PDF");
   }
 });
 
