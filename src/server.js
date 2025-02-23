@@ -6,6 +6,13 @@ import cors from "cors";
 import { getLexiChat } from "./apiCalls/lexi.js";
 import { getStockAnalysis } from "./apiCalls/getStockAnalysis.js";
 
+// Mailing imports
+import multer from "multer";
+import nodemailer from "nodemailer";
+
+// Mailing utilities
+const upload = multer();
+
 // Import utility functions
 import { removingBrackets } from "./utils/removingBrackets.js";
 
@@ -51,6 +58,44 @@ app.post("/stockAnalysis", async (req, res) => {
   } catch (error) {
     console.error("Error in stock analysis route:", error);
     return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.post("/upload", upload.single("pdf"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).send("No file uploaded.");
+    }
+
+    // Create a transporter using your SMTP settings (e.g., Gmail or any SMTP provider)
+    const transporter = nodemailer.createTransport({
+      service: "gmail", // or your chosen email service
+      auth: {
+        user: process.env.USER_NM,
+        pass: process.env.PASSWORD_NM,
+      },
+    });
+
+    // Define the email options, attaching the PDF from memory using its buffer
+    const mailOptions = {
+      from: process.env.USER_NM,
+      to: "TradExBuilder@proton.me",
+      subject: "Your PDF Attachment",
+      text: "Please find the attached PDF file.",
+      attachments: [
+        {
+          filename: req.file.originalname,
+          content: req.file.buffer,
+          contentType: "application/pdf",
+        },
+      ],
+    };
+
+    await transporter.sendMail(mailOptions);
+    res.status(200).send("Email sent successfully.");
+  } catch (error) {
+    console.error("Error occurred:", error);
+    res.status(500).send("An error occurred while sending the email.");
   }
 });
 
