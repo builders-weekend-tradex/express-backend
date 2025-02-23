@@ -76,19 +76,19 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
       },
     });
 
+    const attachments = req.files.map((file) => ({
+      filename: file.originalname,
+      content: file.buffer,
+      contentType: "application/pdf",
+    }));
+
     // Define the email options, attaching the PDF from memory using its buffer
     const mailOptions = {
       from: process.env.USER_NM,
       to: "TradExBuilder@proton.me",
-      subject: "Your PDF Attachment",
-      text: "Please find the attached PDF file.",
-      attachments: [
-        {
-          filename: req.file.originalname,
-          content: req.file.buffer,
-          contentType: "application/pdf",
-        },
-      ],
+      subject: `Your stock analysis for ${tickeSymbol}`,
+      text: "Please find the attached PDF files",
+      attachments: attachments,
     };
 
     await transporter.sendMail(mailOptions);
