@@ -62,7 +62,7 @@ app.post("/email", async (req, res) => {
   const { tickerSymbol, email, result } = req.body;
 
   try {
-    if (!tickerSymbol) {
+    if (!tickerSymbol && result) {
       return res.status(400).send("Ticker symbol is required.");
     }
 
