@@ -2,12 +2,6 @@
 import express from "express";
 import cors from "cors";
 
-import PDFDocument from "pdfkit";
-import puppeteer from "puppeteer";
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
-
 // Import external API call functions
 import { getLexiChat } from "./apiCalls/lexi.js";
 import { getStockAnalysis } from "./apiCalls/getStockAnalysis.js";
@@ -19,8 +13,15 @@ import nodemailer from "nodemailer";
 // Mailing utilities
 const upload = multer();
 
+// PDF helpers
+import PDFDocument from "pdfkit";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
 // Import utility functions
 import { removingBrackets } from "./utils/removingBrackets.js";
+import { createPDF } from "./utils/createPdf.js";
 
 const app = express();
 
@@ -70,88 +71,37 @@ app.post("/stockAnalysis", async (req, res) => {
   }
 });
 
-app.post("/generate-pdf", async (req, res) => {
-  const { result, chartResults, tickerSymbol } = req.body;
-
-  const url = iframeUrls[tickerSymbol];
-  if (!url) {
-    console.error("Invalid ticker symbol received:", tickerSymbol);
-    return res.status(400).send("Invalid ticker symbol");
-  }
+app.post("/email", async (req, res) => {
+  const { tickerSymbol, email } = req.body;
 
   try {
-    console.log(`Generating PDF for ${tickerSymbol}...`);
-
-    // Create a PDF document
-    const doc = new PDFDocument({ autoFirstPage: false });
-    const filePath = path.join(__dirname, `stock_analysis_${tickerSymbol}.pdf`);
-
-    // Pipe the document to a file
-    const fileStream = fs.createWriteStream(filePath);
-    doc.pipe(fileStream);
-
-    // Add a page to the PDF for the textual result
-    doc.addPage();
-    doc.fontSize(12).text(result || "No textual analysis available.", {
-      align: "left",
-      width: 500,
-      lineGap: 10,
-    });
-
-    doc.end();
-
-    // Wait until the PDF is fully created, then send it to the client
-    fileStream.on("finish", () => {
-      console.log("PDF generated successfully. Sending it to the client.");
-      res.setHeader("Content-Type", "application/pdf");
-      res.setHeader(
-        "Content-Disposition",
-        `attachment; filename=stock_analysis_${tickerSymbol}.pdf`
-      );
-      res.sendFile(filePath, (err) => {
-        if (err) {
-          console.error("Error sending PDF file:", err);
-          res.status(500).send("Failed to send PDF");
-        } else {
-          fs.unlinkSync(screenshotPath);
-          fs.unlinkSync(filePath);
-        }
-      });
-    });
-  } catch (error) {
-    console.error("Error generating PDF:", error);
-    res.status(500).send("Failed to generate PDF");
-  }
-});
-
-app.post("/upload", upload.single("pdf"), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).send("No file uploaded.");
+    if (!tickerSymbol) {
+      return res.status(400).send("Ticker symbol is required.");
     }
 
-    // Create a transporter using your SMTP settings (e.g., Gmail or any SMTP provider)
+    const dataAnalysisPdf = await createPDF(tickerSymbol);
+
     const transporter = nodemailer.createTransport({
-      service: "gmail", // or your chosen email service
+      service: "gmail",
       auth: {
         user: process.env.USER_NM,
         pass: process.env.PASSWORD_NM,
       },
     });
 
-    const attachments = req.files.map((file) => ({
-      filename: file.originalname,
-      content: file.buffer,
-      contentType: "application/pdf",
-    }));
-
-    // Define the email options, attaching the PDF from memory using its buffer
+    // Define the email options, properly attaching the PDF from buffer
     const mailOptions = {
       from: process.env.USER_NM,
-      to: "TradExBuilder@proton.me",
-      subject: `Your stock analysis for ${tickeSymbol}`,
-      text: "Please find the attached PDF files",
-      attachments: attachments,
+      to: email || "TradExBuilder@proton.me",
+      subject: `Your stock analysis for ${tickerSymbol}`,
+      text: "Please find the attached stock analysis PDF.",
+      attachments: [
+        {
+          filename: `${tickerSymbol}-stock-analysis.pdf`,
+          content: dataAnalysisPdf,
+          contentType: "application/pdf",
+        },
+      ],
     };
 
     await transporter.sendMail(mailOptions);
